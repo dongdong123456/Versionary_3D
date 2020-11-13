@@ -57,7 +57,7 @@ class BalloonDataset(utils.Dataset):
         subset: Subset to load: train or val
         """
         # Add classes. We have only one class to add.
-        self.add_class("shapes", 1, "sack")
+        self.add_class("shapes", 1, "box")
         for json_file in imglist:
             with json_file.open() as f:
                 json_result = json.load(f)
@@ -130,6 +130,7 @@ class BalloonDataset(utils.Dataset):
 class Runthread(QtCore.QThread):
     #  通过类成员对象定义信号对象
     _signal = pyqtSignal(str)
+    _signal1 = pyqtSignal(str)
 
     def __init__(self, image_path, train_epoch, model_path):
         super(Runthread, self).__init__()
@@ -145,9 +146,13 @@ class Runthread(QtCore.QThread):
         path = Path(dataset_root_path)
         all_json_file = list(path.glob('**/*.json'))
 
-        val_json_file, train_json_file = self.data_split(all_json_file, ratio=0.2, shuffle=True)
+        try:
+            val_json_file, train_json_file = self.data_split(all_json_file, ratio=0.2)
+        except:
+            pass
         train_count = len(train_json_file)
         val_count = len(val_json_file)
+        print(train_count,val_count)
         config.STEPS_PER_EPOCH = train_count
         """Train the model."""
         # Training dataset.
@@ -167,15 +172,15 @@ class Runthread(QtCore.QThread):
                            exclude=["mrcnn_class_logits", "mrcnn_bbox_fc",
                                     "mrcnn_bbox", "mrcnn_mask"])
         _thread.start_new_thread(self.check_change,(model,train_count,))
-        model.train(dataset_train, dataset_val,
-                    learning_rate=config.LEARNING_RATE,
-                    epochs=5,
-                    layers="heads")
+        # model.train(dataset_train, dataset_val,
+        #             learning_rate=config.LEARNING_RATE,
+        #             epochs=5,
+        #             layers="heads")
 
         model.train(dataset_train, dataset_val,
-                    learning_rate=config.LEARNING_RATE/10,
+                    learning_rate=config.LEARNING_RATE,
                     epochs=self.train_epoch,
-                    layers="all")
+                    layers="heads")
 
     def check_change(self,model,train_count):
         self._signal.emit(str(model.step))
@@ -185,15 +190,18 @@ class Runthread(QtCore.QThread):
                 self.step=model.step
 
 
-    def data_split(self, full_list, ratio, shuffle=False):
+    def data_split(self, full_list, ratio):
         n_total = len(full_list)
         offset = int(n_total * ratio)
-        if n_total == 0 or offset < 1:
-            return [], full_list
-        if shuffle:
-            random.shuffle(full_list)
-        sublist_1 = full_list[:offset]
-        sublist_2 = full_list[offset:]
+        if n_total == 0 :
+            self._signal1.emit("没有图片")
+        random.shuffle(full_list)
+        if offset==0:
+            sublist_1 = full_list
+            sublist_2 = full_list
+        else:
+            sublist_1 = full_list[:offset]
+            sublist_2 = full_list[offset:]
         return sublist_1, sublist_2
 
 
@@ -250,6 +258,7 @@ class Train_logic(QMainWindow, Ui_Train):
         self.thread = Runthread(self.image_path,int(self.lineEdit.text()),self.model_path)
         # 连接信号
         self.thread._signal.connect(self.call_backlog)  # 进程连接回传到GUI的事件
+        self.thread._signal1.connect(self.write_msg)  # 进程连接回传到GUI的事件
         # 开始线程
         self.thread.start()
 

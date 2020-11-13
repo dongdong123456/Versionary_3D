@@ -84,13 +84,7 @@ class Ui_Main(object):
         self.pushButton_4.setAutoExclusive(True)
 
         Version3D.setCentralWidget(self.centralwidget)
-        self.menubar = QtWidgets.QMenuBar(Version3D)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1000, 23))
-        self.menubar.setObjectName("menubar")
-        Version3D.setMenuBar(self.menubar)
-        self.statusbar = QtWidgets.QStatusBar(Version3D)
-        self.statusbar.setObjectName("statusbar")
-        Version3D.setStatusBar(self.statusbar)
+
 
         self.retranslateUi(Version3D)
         QtCore.QMetaObject.connectSlotsByName(Version3D)
